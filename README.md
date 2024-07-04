@@ -113,4 +113,5 @@ Contributions are welcome! Please open an issue or submit a pull request for any
 
 ## License
 
-See the [LICENSE](./LICENSE) file for details.
+`pub-w-tools` is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
+See https://creativecommons.org/licenses/by-nc-sa/4.0/.
