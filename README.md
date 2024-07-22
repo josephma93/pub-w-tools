@@ -25,10 +25,10 @@ site. Please review the WOL's Terms and Conditions of Use before using this tool
 To start the Flask application, run:
 
 ```bash
-python pub_w_tools.py
+flask run --port=3001
 ```
 
-By default, the app will run on `http://0.0.0.0:3001`.
+The app will run on `http://0.0.0.0:3001`.
 
 ### Endpoints
 
