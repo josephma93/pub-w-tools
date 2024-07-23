@@ -14,11 +14,14 @@ RUN chown -R appuser:appgroup /app
 
 USER appuser
 
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
+
 ARG PORT=3002
 ENV PORT $PORT
-
 EXPOSE $PORT
 
-ENV NAME FlaskApp
+CMD ["sh", "-c", "flask run --host=0.0.0.0 --port=${PORT}"]
 
-CMD ["python", "pub_w_tools.py"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl --fail http://localhost:${PORT}/apidocs || exit 1
