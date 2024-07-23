@@ -14,11 +14,8 @@ RUN chown -R appuser:appgroup /app
 
 USER appuser
 
-ENV FLASK_APP=app.py
-ENV FLASK_ENV=production
-
 ARG PORT=3002
 ENV PORT $PORT
 EXPOSE $PORT
 
-CMD ["python", "pub_w_tools.py"]
+CMD ["python", "app.py"]
