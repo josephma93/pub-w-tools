@@ -21,7 +21,4 @@ ARG PORT=3002
 ENV PORT $PORT
 EXPOSE $PORT
 
-CMD ["sh", "-c", "flask run --host=0.0.0.0 --port=${PORT}"]
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl --fail http://localhost:${PORT}/apidocs || exit 1
+CMD ["python", "pub_w_tools.py"]
