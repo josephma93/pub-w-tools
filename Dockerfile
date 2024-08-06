@@ -15,10 +15,15 @@ RUN chown -R appuser:appgroup /app
 USER appuser
 
 ARG PORT=3002
+ARG LOGGING_LEVEL=INFO
+
 ENV PORT $PORT
+ENV LOGGING_LEVEL $LOGGING_LEVEL
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
+ENV FLASK_DEBUG=0
+
 EXPOSE $PORT
 
-ARG LOGGING_LEVEL=INFO
-ENV LOGGING_LEVEL $LOGGING_LEVEL
-
-CMD ["python", "app.py"]
+# Use gunicorn to run the application
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:${PORT}", "app:app"]
