@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 
 # Strategy Interface
@@ -16,17 +16,19 @@ class PubWParserStrategy(ContentParserStrategy):
         return '\n'.join([p.text.strip() for p in soup.select('p.sb')])
 
 
+def extract_nwtsty_text_stripping_notes(soup: BeautifulSoup | Tag) -> str:
+    anchors = soup.select('a.fn, a.b')
+    if anchors:
+        for anchor in anchors:
+            anchor.decompose()
+    return soup.get_text(" ", strip=True)
+
+
 # Concrete Strategy for PubNwtsty
 class PubNwtstyParserStrategy(ContentParserStrategy):
     def parse(self, content: str):
         soup = BeautifulSoup(content, 'html5lib')
-
-        anchors = soup.select('a.fn, a.b')
-        if anchors:
-            for anchor in anchors:
-                anchor.decompose()
-
-        return soup.get_text(" ", strip=True)
+        return extract_nwtsty_text_stripping_notes(soup)
 
 
 # Default Strategy

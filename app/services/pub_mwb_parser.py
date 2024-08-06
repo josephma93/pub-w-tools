@@ -6,8 +6,11 @@ from typing import Dict, Any
 from bs4 import BeautifulSoup
 
 from app.services.fetch_content import get_html_content
-from app.services.pub_mwb_reference_parsers import PubWParserStrategy, PubNwtstyParserStrategy, DefaultParserStrategy, \
-    ContentParser
+from app.services.pub_mwb_reference_parsers import (PubWParserStrategy,
+                                                    PubNwtstyParserStrategy,
+                                                    DefaultParserStrategy,
+                                                    ContentParser,
+                                                    extract_nwtsty_text_stripping_notes)
 
 logger = logging.getLogger('pub_mwb_parser')
 
@@ -36,7 +39,8 @@ def parse_reference_json_if_possible(json_string):
             "content": content,
             "articleClasses": article_classes,
             "isPubW": is_pub_w,
-            "isPubNwtsty": is_pub_nwtsty
+            "isPubNwtsty": is_pub_nwtsty,
+            "rawData": data["items"][0],
         }
     except json.JSONDecodeError:
         return "Error: Invalid JSON"
@@ -61,6 +65,14 @@ def apply_parsing_logic(parsed_json):
 
     return {
         "parsedContent": parsed_content,
+    }
+
+
+def build_reference_link_data(link) -> Dict[str, str]:
+    source_href = link.get('href')
+    return {
+        "sourceHref": source_href,
+        "fetchUrl": f"https://wol.jw.org{source_href[3:]}",
     }
 
 
@@ -104,14 +116,12 @@ def parse_10min_talk_to_json(html: str) -> Dict[str, Any]:
             link_text = link.get_text(strip=True)
             paragraph_text = paragraph_text.replace(link_text, f"{link_text}[^{footnote_index}]")
             footnotes.append(footnote_index)
-            result["footnotes"][footnote_index] = {
-                "sourceHref": link.get('href'),
-                "fetchUrl": f"https://wol.jw.org{link.get('href')[3:]}",
+            result["footnotes"][footnote_index] = build_reference_link_data(link).update({
                 "content": "",
                 "articleClasses": "",
                 "isPubW": False,
                 "isPubNwtsty": False,
-            }
+            })
             footnote_index += 1
 
         result["points"].append({
@@ -132,7 +142,193 @@ def parse_10min_talk_to_json(html: str) -> Dict[str, Any]:
 
         maybe_json = parse_reference_json_if_possible(potential_json_content)
         if isinstance(maybe_json, dict):
+            del maybe_json["rawData"]
             fn.update(maybe_json)
             fn.update(apply_parsing_logic(maybe_json))
 
     return result
+
+
+def extract_book_name_from_tooltip_caption(caption):
+    pattern = r'^(.*?)(?=\d+:)'
+    match = re.search(pattern, caption)
+    if match:
+        return match.group(1).strip()
+    else:
+        return caption
+
+
+def parse_weekly_bible_read(html: str) -> Dict[str, Any]:
+    result = {
+        "bookName": "",
+        "bookNumber": -1,
+        "firstChapter": -1,
+        "lastChapter": -1,
+        "links": [],
+    }
+    # logger.debug(html)
+    soup = BeautifulSoup(html, 'html5lib')
+    reading_assignment = soup.find(id='p2')
+
+    if not reading_assignment:
+        logger.warning(f'The link with bible reading assignment was not found: {reading_assignment}')
+        return result
+
+    read_ref_link = reading_assignment.find('a')
+
+    if not read_ref_link:
+        logger.warning(f'Bible reading link not found: {read_ref_link}')
+        return result
+
+    reference_link_data = build_reference_link_data(read_ref_link)
+
+    potential_json_content, status_code = get_html_content(reference_link_data["fetchUrl"])
+    if status_code != 200:
+        logger.warning(f'Unable to load reference data from link: {reference_link_data["fetchUrl"]}')
+        return result
+
+    maybe_json = parse_reference_json_if_possible(potential_json_content)
+    if isinstance(maybe_json, str):
+        logger.warning('Unable to parse reference data to JSON')
+        return result
+
+    if not maybe_json["isPubNwtsty"]:
+        logger.warning('The reference data extracted do not point to the bible')
+        return result
+
+    json_content = maybe_json["rawData"]
+
+    result["bookName"] = extract_book_name_from_tooltip_caption(json_content["caption"])
+    result["bookNumber"] = json_content["book"]
+    result["firstChapter"] = json_content["first_chapter"]
+    result["lastChapter"] = json_content["last_chapter"]
+
+    tooltip_url: str = json_content["url"]
+    language_code = reference_link_data['sourceHref'][0:3]
+    base_url_parts = tooltip_url.split('#')[0].split('/')
+    for chapter in range(json_content["first_chapter"], json_content["last_chapter"] + 1):
+        link_parts = base_url_parts.copy()
+        link_parts[-1] = str(chapter)
+        joined_url = '/'.join(link_parts)
+        result["links"].append(f"https://wol.jw.org{language_code}{joined_url}")
+
+    return result
+
+
+def parse_bible_reference(html: str) -> dict:
+    logger.info("Starting to parse Bible reference")
+    soup = BeautifulSoup(html, 'html5lib')
+
+    sections = soup.select('.section:not(:nth-child(1))')
+    entries = []
+    seen_mnemonics = {}
+
+    logger.debug(f"Found {len(sections)} sections to process")
+    for section in sections:
+        references = []
+        key = section['data-key']
+        prev_mnemonic = None
+
+        logger.debug(f"Processing section with key: {key}")
+        for link in section.select('.group.index.collapsible .sx a'):
+            reference_link_data = build_reference_link_data(link)
+
+            logger.info(f"Fetching content from URL: {reference_link_data['fetchUrl']}")
+            potential_json_content, status_code = get_html_content(reference_link_data["fetchUrl"])
+            if status_code != 200:
+                logger.warning(f"Unable to load reference data from link: {reference_link_data['fetchUrl']}")
+                ref_contents = 'UNABLE_TO_EXTRACT_REFERENCE'
+            else:
+                maybe_json = parse_reference_json_if_possible(potential_json_content)
+                if isinstance(maybe_json, str):
+                    logger.warning("Unable to parse reference data to JSON")
+                    ref_contents = 'UNABLE_TO_EXTRACT_REFERENCE'
+                else:
+                    ref_contents = apply_parsing_logic(maybe_json)
+
+            mnemonic = link.get_text(strip=True).replace(',', '').replace(';', '')
+            if ' ' not in mnemonic and prev_mnemonic:
+                mnemonic = f"{prev_mnemonic.split(' ')[0]} {mnemonic}"
+
+            logger.debug(f"Processed mnemonic: {mnemonic}")
+            if mnemonic in seen_mnemonics:
+                seen_mnemonics[mnemonic]['count'] += 1
+                references.append({
+                    'mnemonic': mnemonic,
+                    'refContents': f'SEE: sharedMnemonicReferences["{mnemonic}"]',
+                })
+                if seen_mnemonics[mnemonic].get('first_seen_ref'):
+                    seen_mnemonics[mnemonic]['first_seen_ref'][
+                        'refContents'] = f'SEE: sharedMnemonicReferences["{mnemonic}"]'
+                    del seen_mnemonics[mnemonic]['first_seen_ref']
+            else:
+                ref_dict = {
+                    'mnemonic': mnemonic,
+                    'refContents': ref_contents
+                }
+                references.append(ref_dict)
+                seen_mnemonics[mnemonic] = {
+                    'count': 1,
+                    'refContents': ref_contents,
+                    'first_seen_ref': ref_dict,
+                }
+
+            prev_mnemonic = mnemonic
+
+        citation = section.select_one('h3.title').get_text(strip=True)
+
+        scripture = ' '.join(
+            extract_nwtsty_text_stripping_notes(e)
+            for e in soup.select(f'[id*="{key}"]')
+        ).strip()
+
+        logger.info(f"Processed citation: {citation}")
+        entries.append({
+            'citation': citation,
+            'scripture': scripture,
+            'references': references,
+        })
+
+    shared_mnemonic_references = {mnemonic: data['refContents'] for mnemonic, data in seen_mnemonics.items() if
+                                  data['count'] > 1}
+
+    logger.info("Finished parsing Bible reference")
+    return {
+        'entries': entries,
+        'sharedMnemonicReferences': shared_mnemonic_references,
+    }
+
+
+def extract_references_from_links(links: list[str]) -> dict:
+    logger.info("Starting to extract references from links")
+    results = []
+    errors = []
+
+    for link in links:
+        try:
+            logger.info(f"Fetching content for link: {link}")
+            html_content, status_code = get_html_content(link)
+            if status_code != 200:
+                error_msg = f'Failed to fetch content for link: {link}'
+                logger.warning(error_msg)
+                errors.append({'link': link, 'error': error_msg, 'status_code': status_code})
+                continue
+
+            logger.info(f"Parsing references for book with URL: {link}")
+            parsed_reference = parse_bible_reference(html_content)
+            if parsed_reference:
+                results.append({
+                    'link': link,
+                    'entries': parsed_reference['entries'],
+                    'sharedMnemonicReferences': parsed_reference['sharedMnemonicReferences']
+                })
+        except Exception as e:
+            error_msg = f'Error processing link {link}: {e}'
+            logger.warning(error_msg)
+            errors.append({'link': link, 'error': error_msg})
+
+    logger.info("Finished extracting references from links")
+    return {
+        'results': results,
+        'errors': errors
+    }

@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -88,3 +89,28 @@ def fetch_weekly_html(today_html: str) -> tuple[str, int]:
         return 'No element found with id="article"', 404
 
     return str(article_element), 200
+
+
+def is_valid_wol_bible_book_url(url: str) -> bool:
+    try:
+        parsed_url = urlparse(url)
+        if parsed_url.netloc != 'wol.jw.org':
+            return False
+        path_parts = parsed_url.path.split('/')
+        if len(path_parts) != 9:
+            return False
+        if path_parts[0] != '':
+            return False
+        if len(path_parts[1]) != 2:
+            return False
+        if not path_parts[-4].startswith('lp'):
+            return False
+        if path_parts[-3] != 'nwtsty':
+            return False
+        if not path_parts[-2].isdigit():
+            return False
+        if not path_parts[-1].isdigit():
+            return False
+        return True
+    except Exception as e:
+        return False
