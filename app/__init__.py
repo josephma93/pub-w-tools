@@ -1,5 +1,4 @@
-from logging.config import dictConfig
-from flask import Flask
+from flask import Flask, jsonify
 from flasgger import Swagger
 from app.routes.wol import wol_bp
 from app.routes.pub_w import pub_w_bp
@@ -21,5 +20,14 @@ def create_app():
     logging.basicConfig(level=numeric_level)
     logger = logging.getLogger(__name__)
     logger.info('Flask app initialized')
+
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        logger.error(f"An unexpected error occurred: {str(e)}")
+        response = {
+            "message": "An unexpected error occurred.",
+            "error": str(e)
+        }
+        return jsonify(response), 500
 
     return app

@@ -116,12 +116,14 @@ def parse_10min_talk_to_json(html: str) -> Dict[str, Any]:
             link_text = link.get_text(strip=True)
             paragraph_text = paragraph_text.replace(link_text, f"{link_text}[^{footnote_index}]")
             footnotes.append(footnote_index)
-            result["footnotes"][footnote_index] = build_reference_link_data(link).update({
+            footnote_data = build_reference_link_data(link)
+            footnote_data.update({
                 "content": "",
                 "articleClasses": "",
                 "isPubW": False,
                 "isPubNwtsty": False,
             })
+            result["footnotes"][footnote_index] = footnote_data
             footnote_index += 1
 
         result["points"].append({

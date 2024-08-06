@@ -48,6 +48,9 @@ Versioned images are also available using the commit SHA as the tag:
 
 ```bash
 docker pull joesofteng/pub-w-tools:{{ SHORT_SHA }}
+# or 
+docker pull joesofteng/pub-w-tools:latest
+
 docker run -d -p 3001:3001 joesofteng/pub-w-tools:{{ SHORT_SHA }}
 ```
 
