@@ -60,3 +60,22 @@ def parse_pub_w() -> tuple[Response, int] | tuple[str, int]:
     json_data = parse_html_to_json(input_html)
     logger.info('Successfully parsed HTML to JSON.')
     return jsonify(json_data), 200
+
+
+@pub_w_bp.route('/get-this-week-json', methods=['GET'])
+def get_this_week_json() -> tuple[Response, int] | tuple[str, int]:
+    """
+    Fetch this week's W article from WOL and returns it as JSON. Alias for calling /get-this-week-html and passing
+    that down to /html-to-json.
+    ---
+    responses:
+      200:
+        description: The HTML content of this week's publication
+      404:
+        description: Resource not found
+    """
+    html_content, status_code = get_this_week_html()
+    if status_code != 200:
+        return jsonify({'error': html_content}), status_code
+    json_data = parse_html_to_json(html_content)
+    return jsonify(json_data), 200
