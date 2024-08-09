@@ -66,7 +66,8 @@ def parse_html_to_json(html: str) -> Dict[str, Any]:
 
     article_number = soup.find('p', class_='contextTtl').strong.text.strip()
     article_title = soup.find('h1').strong.text.strip()
-    article_topic = soup.find('p', class_='themeScrp').em.text.strip()
+    article_theme_scripture = soup.find('p', class_='themeScrp').text.strip()
+    article_topic = soup.select_one('#tt9 p:nth-of-type(2)').text.strip()
 
     contents = extract_contents(soup)
     teach_block = extract_teach_block(soup)
@@ -74,6 +75,7 @@ def parse_html_to_json(html: str) -> Dict[str, Any]:
     json_data = {
         'articleNumber': article_number,
         'articleTitle': article_title,
+        'articleThemeScrp': article_theme_scripture,
         'articleTopic': article_topic,
         'contents': contents,
         'teachBlock': teach_block
