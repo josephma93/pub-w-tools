@@ -1,3 +1,5 @@
+import traceback
+
 from flask import Flask, jsonify
 from flasgger import Swagger
 from app.routes.wol import wol_bp
@@ -23,10 +25,14 @@ def create_app():
 
     @app.errorhandler(Exception)
     def handle_exception(e):
-        logger.error(f"An unexpected error occurred: {str(e)}")
+        error_msg = "An unexpected error occurred: {}"
+        if app.debug:
+            error_msg += "\nTraceback:\n{}"
+        logger.error(error_msg, str(e))
         response = {
             "message": "An unexpected error occurred.",
-            "error": str(e)
+            "error": str(e),
+            "traceback": traceback.format_exc() if app.debug else None
         }
         return jsonify(response), 500
 

@@ -3,8 +3,9 @@ import logging
 from flask import Blueprint, Response, jsonify, request
 
 from app.routes.wol import fetch_today
-from app.services.fetch_content import is_valid_wol_bible_book_url
-from app.services.pub_mwb_parser import parse_10min_talk_to_json, parse_weekly_bible_read, extract_references_from_links
+from app.services.fetch_content import is_valid_wol_bible_book_url, is_url_str_in_wol_jw_org, get_html_content
+from app.services.pub_mwb_parser import parse_10min_talk_to_json, parse_weekly_bible_read, \
+    extract_references_from_links, parse_this_week_json
 
 pub_mwb = Blueprint('pub_mwb', __name__)
 logger = logging.getLogger('pub_mwb')
@@ -32,6 +33,44 @@ def get_this_week_html() -> tuple[Response, int] | tuple[str, int]:
     return jsonify(json_data), 200
 
 
+@pub_mwb.route('/get-week-program-json', methods=['GET'])
+def get_this_week_json() -> tuple[Response, int] | tuple[str, int]:
+    """
+    Fetch this week's data from WOL and returns it as JSON.
+    ---
+    parameters:
+      - name: url
+        in: query
+        type: string
+        required: false
+        description: The URL to fetch data from. If not provided, today's data will be fetched.
+
+    responses:
+      200:
+        description: The JSON content of this week's data
+      404:
+        description: Resource not found
+    """
+    url = request.args.get('url')
+    logger.debug('URL parameter: %s', url)
+
+    if is_url_str_in_wol_jw_org(url):
+        logger.info('Fetching HTML content from provided URL')
+        html_content, status_code = get_html_content(url)
+    else:
+        logger.info('Fetching today\'s data')
+        html_content, status_code = fetch_today()
+
+    if status_code != 200:
+        logger.error('Failed to fetch data with status code %s', status_code)
+        return jsonify({'error': html_content}), status_code
+
+    logger.info('Parsing JSON data')
+    json_data = parse_this_week_json(html_content)
+    logger.info('Successfully parsed JSON data')
+    return jsonify(json_data), 200
+
+
 def fetch_weekly_bible_reading_info() -> tuple[dict, int]:
     today_html_content, status_code = fetch_today()
     if status_code != 200:
@@ -42,8 +81,6 @@ def fetch_weekly_bible_reading_info() -> tuple[dict, int]:
     logger.info('Successfully parsed HTML to JSON.')
 
     return json_data, 200
-
-
 
 
 @pub_mwb.route('/weekly-scripture-read', methods=['GET'])
