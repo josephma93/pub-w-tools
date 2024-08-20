@@ -1,6 +1,6 @@
 import traceback
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, redirect
 from flasgger import Swagger
 from app.routes.wol import wol_bp
 from app.routes.pub_w import pub_w_bp
@@ -25,15 +25,20 @@ def create_app():
 
     @app.errorhandler(Exception)
     def handle_exception(e):
-        error_msg = "An unexpected error occurred: {}"
-        if app.debug:
-            error_msg += "\nTraceback:\n{}"
-        logger.error(error_msg, str(e))
+        logger.error(f"An unexpected error occurred: {str(e)}")
         response = {
-            "message": "An unexpected error occurred.",
-            "error": str(e),
-            "traceback": traceback.format_exc() if app.debug else None
+            "message": "An unexpected error occurred."
         }
+
+        if app.debug:
+            response["error"] = str(e)
+            response["type"] = type(e).__name__
+            response["details"] = str(e.__dict__) if hasattr(e, '__dict__') else str(e)
+
         return jsonify(response), 500
+
+    @app.route('/')
+    def redirect_to_apidocs():
+        return redirect('/apidocs')
 
     return app
