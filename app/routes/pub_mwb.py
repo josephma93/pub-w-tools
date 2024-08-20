@@ -7,11 +7,11 @@ from app.services.fetch_content import is_valid_wol_bible_book_url, is_url_str_i
 from app.services.pub_mwb_parser import parse_10min_talk_to_json, parse_weekly_bible_read, \
     extract_references_from_links, parse_this_week_json
 
-pub_mwb = Blueprint('pub_mwb', __name__)
+pub_mwb_bp = Blueprint('pub_mwb', __name__)
 logger = logging.getLogger('pub_mwb')
 
 
-@pub_mwb.route('/get-this-week-10min-talk-json', methods=['GET'])
+@pub_mwb_bp.route('/get-this-week-10min-talk-json', methods=['GET'])
 def get_this_week_html() -> tuple[Response, int] | tuple[str, int]:
     """
     Parce this week's 10min talk in WOL to JSON
@@ -33,7 +33,7 @@ def get_this_week_html() -> tuple[Response, int] | tuple[str, int]:
     return jsonify(json_data), 200
 
 
-@pub_mwb.route('/get-week-program-json', methods=['GET'])
+@pub_mwb_bp.route('/get-week-program-json', methods=['GET'])
 def get_this_week_json() -> tuple[Response, int] | tuple[str, int]:
     """
     Fetch this week's data from WOL and returns it as JSON.
@@ -83,7 +83,7 @@ def fetch_weekly_bible_reading_info() -> tuple[dict, int]:
     return json_data, 200
 
 
-@pub_mwb.route('/weekly-scripture-read', methods=['GET'])
+@pub_mwb_bp.route('/weekly-scripture-read', methods=['GET'])
 def get_weekly_bible_reading_info() -> tuple[Response, int]:
     """
     Parce this week's program to fetch information about the assigned biblical reading
@@ -98,7 +98,7 @@ def get_weekly_bible_reading_info() -> tuple[Response, int]:
     return jsonify(json_data), status_code
 
 
-@pub_mwb.route('/scripture-read-references', methods=['GET'])
+@pub_mwb_bp.route('/scripture-read-references', methods=['GET'])
 def get_bible_references_as_json() -> tuple[Response, int] | tuple[str, int]:
     """
     Extract all references found on the bible using the given links to the books to process and return them as JSON.
