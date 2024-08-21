@@ -5,7 +5,7 @@ from flask import Blueprint, Response, jsonify, request
 from app.routes.wol import fetch_today
 from app.services.fetch_content import is_valid_wol_bible_book_url, is_url_str_in_wol_jw_org, get_html_content
 from app.services.pub_mwb_parser import parse_10min_talk_to_json, parse_weekly_bible_read, \
-    extract_references_from_links, parse_this_week_json
+    extract_references_from_links, parse_meeting_workbook_to_json
 
 pub_mwb_bp = Blueprint('pub_mwb', __name__)
 logger = logging.getLogger('pub_mwb')
@@ -66,7 +66,7 @@ def get_this_week_json() -> tuple[Response, int] | tuple[str, int]:
         return jsonify({'error': html_content}), status_code
 
     logger.info('Parsing JSON data')
-    json_data = parse_this_week_json(html_content)
+    json_data = parse_meeting_workbook_to_json(html_content)
     logger.info('Successfully parsed JSON data')
     return jsonify(json_data), 200
 

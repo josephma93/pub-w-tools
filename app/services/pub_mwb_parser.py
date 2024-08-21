@@ -467,7 +467,7 @@ def parse_christian_living_from_soup(soup: BeautifulSoup) -> Dict[str, Any]:
     return result
 
 
-def parse_this_week_json(html: str) -> Dict[str, Any]:
+def parse_meeting_workbook_to_json(html: str) -> Dict[str, Any]:
     logger.debug(f"Parsing HTML: {html}")
     soup = BeautifulSoup(html, 'html5lib')
     logger.info("Parsed HTML into soup")
@@ -489,6 +489,7 @@ def parse_this_week_json(html: str) -> Dict[str, Any]:
     logger.info("Removed noise from ten_min_talk")
 
     result = {
+        "weekDateSpan": soup.find(id='p1').text.strip().lower(),
         "bibleStudy": bible_study,
         "godTreasures": {
             "tenMinTalk": ten_min_talk,
