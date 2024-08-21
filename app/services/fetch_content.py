@@ -152,9 +152,9 @@ def is_valid_wol_bible_book_url(url: str) -> bool:
     logger.debug(f"Checking if URL is a valid WOL Bible book URL: {url}")
     parsed_url = parse_url(url)
     if not parsed_url:
-        logger.error(f"Failed to parse URL: {url}")
+        logger.warning(f"Failed to parse URL: {url}")
         return False
-    if is_wol_jw_org(parsed_url):
+    if not is_wol_jw_org(parsed_url):
         logger.debug(f"URL is from wol.jw.org, skipping: {url}")
         return False
     path_parts = parsed_url['path_parts']
@@ -178,9 +178,9 @@ def is_valid_wol_bible_book_url(url: str) -> bool:
         logger.warning(f"Invalid URL path parts second element from end: {path_parts[-2]} (expected digit)")
         return False
     if not path_parts[-1].isdigit():
-
         logger.warning(f"Invalid URL path parts last element: {path_parts[-1]} (expected digit)")
         return False
+
     logger.info(f"URL is a valid WOL Bible book URL: {url}")
     return True
 
