@@ -171,7 +171,7 @@ def parse_bible_reference(html: str) -> dict:
                 logger.warning(f"Unable to load reference data from link: {reference_link_data['fetchUrl']}")
                 ref_contents = 'UNABLE_TO_EXTRACT_REFERENCE'
             else:
-                ref_contents = reference_link_data['content']
+                ref_contents = reference_link_data['parsedContent']
 
             mnemonic = link.get_text(strip=True).replace(',', '').replace(';', '')
             if ' ' not in mnemonic and prev_mnemonic:
