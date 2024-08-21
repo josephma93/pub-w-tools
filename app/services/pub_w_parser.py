@@ -3,6 +3,8 @@ from typing import Dict, Any, List
 
 from bs4 import BeautifulSoup
 
+from app.services.reference_link_parser import parse_reference_data_from_anchor
+
 
 def remove_strong_tag(question) -> str:
     strong_tag = question.find('strong')
@@ -40,9 +42,16 @@ def extract_paragraph_numbers(question) -> List[int]:
     return []
 
 
+from typing import List, Dict, Any
+from bs4 import BeautifulSoup
+
+
 def extract_contents(soup: BeautifulSoup) -> List[Dict[str, Any]]:
     contents = []
     questions = soup.find_all('p', class_='qu')
+
+    footnote_index = 1
+
     for question in questions:
         p_numbers = extract_paragraph_numbers(question)
         q_text = remove_strong_tag(question)
@@ -50,14 +59,28 @@ def extract_contents(soup: BeautifulSoup) -> List[Dict[str, Any]]:
 
         data_pid = question.get('data-pid')
         related_paragraphs = soup.find_all('p', {'data-rel-pid': f'[{data_pid}]'})
+
         for para in related_paragraphs:
-            paragraphs.append(para.text.strip())
+            references = {}
+
+            for anchor_ref in para.select('a:not([data-video])'):
+                ref_text = anchor_ref.get_text()
+                anchor_ref.replace_with(f"{ref_text} [^{footnote_index}]")
+                anchor_ref_data = parse_reference_data_from_anchor(anchor_ref)
+                references[footnote_index] = anchor_ref_data['parsedContent']
+                footnote_index += 1
+
+            paragraphs.append({
+                'content': para.text.strip(),
+                'references': references,
+            })
 
         contents.append({
             'pNumbers': p_numbers,
             'question': q_text,
             'paragraphs': paragraphs
         })
+
     return contents
 
 
