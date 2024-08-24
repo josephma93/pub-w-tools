@@ -1,4 +1,5 @@
 import logging
+import time
 from urllib.parse import urlparse
 
 import requests
@@ -19,6 +20,7 @@ def get_html_content(url: str) -> tuple[str, int]:
     Returns:
     tuple[str, int]: A tuple containing the HTML content and the HTTP status code.
     """
+    start_time = time.time()
 
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:126.0) Gecko/20100101 Firefox/126.0',
@@ -31,20 +33,36 @@ def get_html_content(url: str) -> tuple[str, int]:
     logger.debug(f"Sending GET request to {url} with headers: {headers}")
 
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=(6.05, 27))
         response.raise_for_status()
-        logger.info(f"Received HTML content from {url} with status code 200")
+        elapsed_time = time.time() - start_time
+        logger.info(f"Received HTML content from {url} with status code 200 in {elapsed_time:.2f} seconds")
+        if elapsed_time > 10:
+            logger.warning(f"Operation took {elapsed_time:.2f} seconds")
         return response.text, 200
     except requests.exceptions.HTTPError as e:
-        logger.error(f"HTTP error occurred: {e.response.status_code} - {e.response.reason}")
+        elapsed_time = time.time() - start_time
+        logger.error(f"HTTP error occurred: {e.response.status_code} - {e.response.reason} in {elapsed_time:.2f} seconds")
+        if elapsed_time > 10:
+            logger.warning(f"Operation took {elapsed_time:.2f} seconds")
         return f"HTTP error: {e.response.status_code} - {e.response.reason}", e.response.status_code
     except requests.exceptions.ConnectionError as e:
-        logger.warning(f"Connection error occurred: {e}")
+        elapsed_time = time.time() - start_time
+        logger.warning(f"Connection error occurred: {e} in {elapsed_time:.2f} seconds")
+        if elapsed_time > 10:
+            logger.warning(f"Operation took {elapsed_time:.2f} seconds")
         return "Connection error occurred", 503
     except requests.exceptions.Timeout as e:
-        logger.warning(f"Timeout error occurred: {e}")
+        elapsed_time = time.time() - start_time
+        logger.warning(f"Timeout error occurred: {e} in {elapsed_time:.2f} seconds")
+        if elapsed_time > 10:
+            logger.warning(f"Operation took {elapsed_time:.2f} seconds")
         return "Timeout error occurred", 504
     except requests.exceptions.RequestException as e:
+        elapsed_time = time.time() - start_time
+        logger.error(f"Request error occurred: {e} in {elapsed_time:.2f} seconds")
+        if elapsed_time > 10:
+            logger.warning(f"Operation took {elapsed_time:.2f} seconds")
         logger.error(f"Request error occurred: {e}")
         return "Request error occurred", 500
 
